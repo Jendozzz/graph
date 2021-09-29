@@ -7,8 +7,9 @@ class Graph {
     struct Edge {
         int weight;
         int index;
+        char name;
         Edge* next;
-        Edge(int weight, int index, Edge* next = nullptr) : weight(weight), index(index), next(next) {}
+        Edge(int weight, int index, char name, Edge* next = nullptr) : weight(weight), index(index), name(name), next(next) {}
     };
     struct Vertex {
         char name;
@@ -18,13 +19,18 @@ class Graph {
     };
     int count;
     Vertex* verts;
+
+    int find_index(char name) {
+        for (size_t i = 0; i < count; ++i) {
+            if (verts[i].name == name) return i;
+        }
+        return -1;
+    }
 public:
     Graph() : count(0), verts(nullptr){}
 
     void add_vertex(char name) {
-        for (size_t i = 0; i < count; ++i) {
-            if (verts[i].name == name) throw logic_error("Vertex 'name' already exist");
-        }
+        if (find_index(name) != -1) throw logic_error("Vertex 'name' already exist");
         Vertex* tmp = new Vertex[count + 1];
         for (size_t i = 0; i < count; ++i){
             tmp[i].name = verts[i].name;
@@ -36,38 +42,55 @@ public:
     }
 
     void del_vertex(char name) {
-        int k = 0;
-        while (verts[k].name != name && k!=count) {
-            ++k;
-        }
-        if (k==count) throw logic_error("Vertex 'name' not exist");
         int index = find_index(name);
-        Vertex* tmp = new Vertex[count - 1];
+        if (index == -1) throw logic_error("Vertex 'name' not exist");
+        Vertex* tmp = new Vertex[count-1];
         for (size_t i = 0; i < index; ++i) {
             tmp[i].name = verts[i].name;
-            tmp[i].edges= verts[i].edges;
+            tmp[i].edges = verts[i].edges;
+            tmp[i].edges->name = verts[i].edges->name;
         }
-        for (int i = index; i < count-1; ++i) {
-            tmp[i].name = verts[i+1].name;
-            tmp[i].edges = verts[i+1].edges;
+        for (int i = index + 1; i < count - 1; ++i) {
+            tmp[i - 1].name = verts[i].name;
+            tmp[i - 1].edges = verts[i].edges;
+            tmp[i - 1].edges->name = verts[i].edges->name;
+        }
+        while (verts[index].edges) {
+            Edge* tmp1 = verts[index].edges;
+            verts[index].edges = verts[index].edges->next;          //удаление ребер, идущих ИЗ удаляемой вершины
+            delete tmp1;
+        }
+        for (int i = 0; i < count; ++i) {
+            Edge* head = verts[i].edges;
+            while (head) {
+                if (verts[i].edges->index == index) {
+                    Edge* tmp1 = verts[i].edges;
+                    verts[i].edges = verts[i].edges->next;          //удаление ребер, ведущих В удаляемую вершину
+                    delete tmp1;
+                }
+                head = head->next;
+            }
+        }
+        for (size_t i = 0; i < index; ++i) {
+            tmp[i].name = verts[i].name;
+            tmp[i].edges = verts[i].edges;
+            tmp[i].edges->name = verts[i].edges->name;
+        }
+        for (int i = index+1; i < count - 1; ++i) {
+            tmp[i-1].name = verts[i].name;
+            tmp[i-1].edges = verts[i].edges;
+            tmp[i-1].edges->name = verts[i].edges->name;
         }
         delete[]verts;
         verts = tmp;
         --count;
     }
 
-    int find_index(char name) {
-        for (size_t i = 0; i < count; ++i){
-            if (verts[i].name == name) return i;
-        }
-        throw logic_error("Vertex 'name' not exist");
-    }
-
     void add_edge(char src, char dst, int weight) {
         int ind_v1 = find_index(src);
         int ind_v2 = find_index(dst);
         if (weight<=0) throw logic_error("Weight < 0");
-        verts[ind_v1].edges = new Edge(weight, ind_v2, verts[ind_v1].edges);
+        verts[ind_v1].edges = new Edge(weight, ind_v2, dst, verts[ind_v1].edges);
     }
 
     void del_edges(char src, char dst) {
